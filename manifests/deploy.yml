@@ -5,7 +5,7 @@ metadata:
   annotations:
     argocd-image-updater.argoproj.io/update-strategy: "latest"
     argocd-image-updater.argoproj.io/hello-world.image-name: "imshashannk/hello-world"
-    argocd-image-updater.argoproj.io/hello-world.pull-policy: "IfNotPresent"
+    argocd-image-updater.argoproj.io/hello-world.pull-policy: "Always"
     argocd-image-updater.argoproj.io/hello-world.tag: "latest"
 spec:
   replicas: 2
@@ -21,4 +21,4 @@ spec:
       - name: hello-world
         image: imshashannk/hello-world:latest
         ports:
-        - containerPort: 80
+        - containerPort: 8
