@@ -2,8 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: hello-world-deployment
-  annotations:
-    argocd-image-updater.argoproj.io/update-strategy: "latest"  # This tells ArgoCD Image Updater to track the latest tag
 spec:
   replicas: 2
   selector:
@@ -19,4 +17,3 @@ spec:
         image: imshashannk/hello-world:latest
         ports:
         - containerPort: 80
-
