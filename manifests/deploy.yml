@@ -20,5 +20,6 @@ spec:
       containers:
       - name: hello-world
         image: imshashannk/hello-world:latest
+        imagePullPolicy: Always  # Ensure this is set
         ports:
-        - containerPort: 8
+        - containerPort: 8080  # Change this to the correct port your app listens on
