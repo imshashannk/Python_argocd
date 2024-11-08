@@ -6,7 +6,6 @@ metadata:
   annotations:
     argocd-image-updater.argoproj.io/hello-world.image-name: "imshashannk/hello-world"
     argocd-image-updater.argoproj.io/hello-world.update-strategy: "name"
-    argocd-image-updater.argoproj.io/write-back-method: "git:secret:argocd/git-creds"
 spec:
   replicas: 2
   selector:
@@ -19,7 +18,7 @@ spec:
     spec:
       containers:
       - name: hello-world
-        image: imshashannk/hello-world  # No tag here for dynamic updates
+        image: imshashannk/hello-world # No tag here for dynamic updates
         imagePullPolicy: Always
         ports:
         - containerPort: 8080  
