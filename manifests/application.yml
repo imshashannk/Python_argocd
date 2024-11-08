@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hello-world-app
+  namespace: argocd
+  annotations:
+    # Tell ArgoCD Image Updater which image to update and its update strategy
+    argocd-image-updater.argoproj.io/image-list: "hello-world=imshashannk/hello-world:latest"
+    argocd-image-updater.argoproj.io/update-strategy: "latest"  # Could be "tag" or other strategies
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd2  # Ensure this is the correct namespace where your app is deployed
+  source:
+    repoURL: https://github.com/imshashannk/Python_argocd.git
+    path: manifests  # Path where your k8s manifests are located
+    targetRevision: HEAD
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
