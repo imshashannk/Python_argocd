@@ -1,29 +1,23 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Application
 metadata:
-  name: hello-world-deployment
+  name: hello-world-app
+  namespace: argocd2
   annotations:
-    # Image update strategy: 'latest' means the updater will always use the latest image available.
+    # Annotation to specify which image to update
+    argocd-image-updater.argoproj.io/image-list: "hello-world=imshashannk/hello-world:latest"
+    # Annotation to define the update strategy
     argocd-image-updater.argoproj.io/update-strategy: "latest"
-    # Specifies the image name in the registry.
-    argocd-image-updater.argoproj.io/hello-world.image-name: "imshashannk/hello-world"
-    # Image pull policy to always pull the latest version of the image.
-    argocd-image-updater.argoproj.io/hello-world.pull-policy: "Always"
-    # Defines the tag for the image to be used. 'latest' here refers to the latest pushed image tag.
-    argocd-image-updater.argoproj.io/hello-world.tag: "latest"
 spec:
-  replicas: 2  # Number of replicas for your deployment
-  selector:
-    matchLabels:
-      app: hello-world  # Label selector to match the pods
-  template:
-    metadata:
-      labels:
-        app: hello-world  # Labels for the pod to match the deployment
-    spec:
-      containers:
-      - name: hello-world
-        image: imshashannk/hello-world:latest  # The image to use, which will be updated based on the annotations
-        imagePullPolicy: Always  # Ensures the image is always pulled to get the latest version
-        ports:
-        - containerPort: 8080  # Port your app listens on, adjust this if necessary
+  project: default
+  source:
+    repoURL: https://github.com/imshashannk/Python_argocd.git
+    path: manifests
+    targetRevision: HEAD
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd2
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
