@@ -5,8 +5,7 @@ metadata:
   namespace: argocd
   annotations:
     argocd-image-updater.argoproj.io/hello-world.image-name: "imshashannk/hello-world"
-    argocd-image-updater.argoproj.io/hello-world.update-strategy: "semver"
-    argocd-image-updater.argoproj.io/hello-world.tag: ">1.0.0"
+    argocd-image-updater.argoproj.io/hello-world.update-strategy: "name"
     argocd-image-updater.argoproj.io/write-back-method: "git:secret:argocd/git-creds"
 spec:
   replicas: 2
@@ -20,7 +19,7 @@ spec:
     spec:
       containers:
       - name: hello-world
-        image: imshashannk/hello-world  # Remove hardcoded tag to let Image Updater manage it
+        image: imshashannk/hello-world  # No tag here for dynamic updates
         imagePullPolicy: Always
         ports:
         - containerPort: 8080  
