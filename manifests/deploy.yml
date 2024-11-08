@@ -3,9 +3,6 @@ kind: Deployment
 metadata:
   name: hello-world-deployment
   namespace: argocd
-  annotations:
-    argocd-image-updater.argoproj.io/hello-world.image-name: "imshashannk/hello-world"
-    argocd-image-updater.argoproj.io/hello-world.update-strategy: "name"
 spec:
   replicas: 2
   selector:
