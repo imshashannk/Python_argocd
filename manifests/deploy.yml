@@ -1,27 +1,3 @@
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: hello-world-app
-  namespace: argocd2
-  annotations:
-    argocd-image-updater.argoproj.io/image-list: "hello-world=imshashannk/hello-world:latest"
-    argocd-image-updater.argoproj.io/update-strategy: "latest"
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/imshashannk/Python_argocd.git
-    path: manifests
-    targetRevision: HEAD
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: argocd2
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
