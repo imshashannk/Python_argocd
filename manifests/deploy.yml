@@ -3,23 +3,27 @@ kind: Deployment
 metadata:
   name: hello-world-deployment
   annotations:
+    # Image update strategy: 'latest' means the updater will always use the latest image available.
     argocd-image-updater.argoproj.io/update-strategy: "latest"
+    # Specifies the image name in the registry.
     argocd-image-updater.argoproj.io/hello-world.image-name: "imshashannk/hello-world"
+    # Image pull policy to always pull the latest version of the image.
     argocd-image-updater.argoproj.io/hello-world.pull-policy: "Always"
+    # Defines the tag for the image to be used. 'latest' here refers to the latest pushed image tag.
     argocd-image-updater.argoproj.io/hello-world.tag: "latest"
 spec:
-  replicas: 2
+  replicas: 2  # Number of replicas for your deployment
   selector:
     matchLabels:
-      app: hello-world
+      app: hello-world  # Label selector to match the pods
   template:
     metadata:
       labels:
-        app: hello-world
+        app: hello-world  # Labels for the pod to match the deployment
     spec:
       containers:
       - name: hello-world
-        image: imshashannk/hello-world:latest
-        imagePullPolicy: Always  # Ensure this is set
+        image: imshashannk/hello-world:latest  # The image to use, which will be updated based on the annotations
+        imagePullPolicy: Always  # Ensures the image is always pulled to get the latest version
         ports:
-        - containerPort: 8080  # Change this to the correct port your app listens on
+        - containerPort: 8080  # Port your app listens on, adjust this if necessary
