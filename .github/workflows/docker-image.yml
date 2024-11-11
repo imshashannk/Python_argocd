@@ -11,7 +11,7 @@ jobs:
     
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3  # Use latest version of actions/checkout
     
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
@@ -41,9 +41,14 @@ jobs:
 
     - name: Create New Git Tag and Push
       run: |
-        # Create a new Git tag with the incremented version
-        git tag ${{ env.tag }}
-        git push origin ${{ env.tag }}
+        # Check if the tag already exists
+        if git rev-parse ${{ env.tag }} >/dev/null 2>&1; then
+          echo "Tag ${{ env.tag }} already exists. Skipping tag creation."
+        else
+          # Create a new Git tag with the incremented version
+          git tag ${{ env.tag }}
+          git push origin ${{ env.tag }}
+        fi
 
     - name: Build and Push Docker Image
       uses: docker/build-push-action@v3
