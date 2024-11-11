@@ -22,31 +22,16 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Get Latest Version Tag
+    - name: Get Latest Version from GitHub Releases
       id: version
       run: |
-        VERSION_FILE=".version"
-        
-        # Check if version file exists, else initialize with 0
-        if [[ -f "$VERSION_FILE" ]]; then
-          VERSION=$(cat $VERSION_FILE)
-        else
-          VERSION=0
-        fi
+        # Fetch the latest release tag
+        LATEST_VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases | jq -r '.[0].tag_name' | grep -E '^[0-9]+$' || echo "0")
         
         # Increment version
-        NEW_VERSION=$((VERSION + 1))
-        echo "$NEW_VERSION" > $VERSION_FILE
+        NEW_VERSION=$((LATEST_VERSION + 1))
         echo "New version is $NEW_VERSION"
         echo "tag=$NEW_VERSION" >> $GITHUB_ENV
-
-    - name: Commit Version File
-      run: |
-        git config --local user.name "github-actions"
-        git config --local user.email "github-actions@github.com"
-        git add .version
-        git commit -m "Increment version to ${{ env.tag }}"
-        git push
 
     - name: Build and Push Docker Image
       uses: docker/build-push-action@v3
@@ -56,3 +41,12 @@ jobs:
         tags: |
           imshashannk/hello-world:${{ env.tag }}
           imshashannk/hello-world:latest
+
+    - name: Create GitHub Release for Version Tracking
+      uses: actions/create-release@v1
+      with:
+        tag_name: "${{ env.tag }}"
+        release_name: "Version ${{ env.tag }}"
+        draft: false
+        prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}
