@@ -9,6 +9,7 @@ metadata:
     argocd-image-updater.argoproj.io/write-back-method: git               # Write-back method
     argocd-image-updater.argoproj.io/git-branch: main                     # Git branch
     argocd-image-updater.argoproj.io/myalias.force-update: "true"         # Force update option
+    
 spec:
   replicas: 2
   selector:
@@ -21,7 +22,7 @@ spec:
     spec:
       containers:
       - name: hello-world
-        image: imshashannk/hello-world:latest    # Use :latest tag for the latest version
+        image: imshashannk/hello-world   # Use :latest tag for the latest version
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
