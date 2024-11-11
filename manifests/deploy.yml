@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: hello-world
-        image: imshashannk/hello-world # No tag here for dynamic updates
+        image: imshashannk/hello-world:latest  # Use :latest tag for the latest version
         imagePullPolicy: Always
         ports:
-        - containerPort: 8080  
+        - containerPort: 8080
