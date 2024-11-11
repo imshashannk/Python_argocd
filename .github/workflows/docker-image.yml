@@ -8,10 +8,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v2
     
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
@@ -21,33 +21,23 @@ jobs:
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-    
-    - name: Get Latest Tag and Increment
+
+    - name: Get Latest Version Tag and Increment
       id: version
       run: |
-        # Fetch all tags to get the latest one
-        git fetch --tags
-
-        # Get the latest tag (if any)
-        LATEST_TAG=$(git describe --tags --abbrev=0 || echo "v0")
-
-        # Extract version number (e.g., "v1", "v2", etc.)
-        VERSION_NUMBER=$(echo $LATEST_TAG | sed 's/v//')
-
-        # Increment version number
-        NEW_VERSION=$((VERSION_NUMBER + 1))
-        NEW_TAG="v$NEW_VERSION"
-
-        # Output the new tag for later use
-        echo "New tag: $NEW_TAG"
+        IMAGE_NAME="imshashannk/hello-world"
+        
+        # Fetch the latest numeric tag and increment
+        LATEST_TAG=$(curl -s "https://registry.hub.docker.com/v1/repositories/$IMAGE_NAME/tags" | jq -r '.[].name' | grep -E '^[0-9]+$' | sort -n | tail -n 1)
+        
+        if [ -z "$LATEST_TAG" ]; then
+          NEW_TAG="1"  # Start with 1 if no previous tag exists
+        else
+          NEW_TAG=$((LATEST_TAG + 1))
+        fi
+        
+        echo "New tag is $NEW_TAG"
         echo "tag=$NEW_TAG" >> $GITHUB_ENV
-
-    - name: Create Git Tag and Push
-      run: |
-        # Create and push the new tag if it doesn't already exist
-        git tag ${{ env.tag }}
-        git push origin ${{ env.tag }}
-
     - name: Build and Push Docker Image
       uses: docker/build-push-action@v3
       with:
