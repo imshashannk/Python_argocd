@@ -22,16 +22,28 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Get Latest Version from GitHub Releases
+    - name: Get Latest Git Tag and Increment
       id: version
       run: |
-        # Fetch the latest release tag
-        LATEST_VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases | jq -r '.[0].tag_name' | grep -E '^[0-9]+$' || echo "0")
+        # Fetch the latest git tag (or use v0 if no tags exist)
+        LATEST_TAG=$(git describe --tags --abbrev=0 || echo "v0")
         
-        # Increment version
-        NEW_VERSION=$((LATEST_VERSION + 1))
-        echo "New version is $NEW_VERSION"
-        echo "tag=$NEW_VERSION" >> $GITHUB_ENV
+        # Extract the version number (e.g., "v1", "v2", etc.)
+        VERSION_NUMBER=$(echo $LATEST_TAG | sed 's/v//')
+        
+        # Increment the version number
+        NEW_VERSION=$((VERSION_NUMBER + 1))
+        NEW_TAG="v$NEW_VERSION"
+        
+        # Set the tag as an environment variable
+        echo "New tag is $NEW_TAG"
+        echo "tag=$NEW_TAG" >> $GITHUB_ENV
+
+    - name: Create New Git Tag and Push
+      run: |
+        # Create a new Git tag with the incremented version
+        git tag ${{ env.tag }}
+        git push origin ${{ env.tag }}
 
     - name: Build and Push Docker Image
       uses: docker/build-push-action@v3
@@ -41,12 +53,3 @@ jobs:
         tags: |
           imshashannk/hello-world:${{ env.tag }}
           imshashannk/hello-world:latest
-
-    - name: Create GitHub Release for Version Tracking
-      uses: actions/create-release@v1
-      with:
-        tag_name: "${{ env.tag }}"
-        release_name: "Version ${{ env.tag }}"
-        draft: false
-        prerelease: false
-        token: ${{ secrets.GITHUB_TOKEN }}
