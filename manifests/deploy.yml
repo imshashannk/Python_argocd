@@ -3,11 +3,12 @@ kind: Deployment
 metadata:
   name: hello-world-deployment
   namespace: argocd
-    argocd-image-updater.argoproj.io/image-list: imshashannk/hello-world     #Write repository name
-    argocd-image-updater.argoproj.io/myalias.update-strategy: digest #There are several ways to update the image, but I'm using digest.
-    argocd-image-updater.argoproj.io/write-back-method: git  # We don't need the secret as mentioned in argocd doc because we already set it up via argocd console if you're using the same git repo.
-    argocd-image-updater.argoproj.io/git-branch: main 
-    argocd-image-updater.argoproj.io/myalias.force-update: "true"
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: imshashannk/hello-world  # Repository name
+    argocd-image-updater.argoproj.io/myalias.update-strategy: digest      # Update strategy
+    argocd-image-updater.argoproj.io/write-back-method: git               # Write-back method
+    argocd-image-updater.argoproj.io/git-branch: main                     # Git branch
+    argocd-image-updater.argoproj.io/myalias.force-update: "true"         # Force update option
 spec:
   replicas: 2
   selector:
@@ -20,7 +21,7 @@ spec:
     spec:
       containers:
       - name: hello-world
-        image: imshashannk/hello-world:latest  # Use :latest tag for the latest version
+        image: imshashannk/hello-world:latest    # Use :latest tag for the latest version
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
