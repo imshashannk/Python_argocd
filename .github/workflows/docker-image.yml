@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -21,42 +21,32 @@ jobs:
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Get Latest Git Tag and Increment
+    
+    - name: Get Latest Tag and Increment
       id: version
       run: |
-        # Ensure git is properly initialized and synced
+        # Fetch all tags to get the latest one
         git fetch --tags
-        
-        # Fetch the latest git tag (or use v0 if no tags exist)
+
+        # Get the latest tag (if any)
         LATEST_TAG=$(git describe --tags --abbrev=0 || echo "v0")
-        
-        # Extract the version number (e.g., "v1", "v2", etc.)
+
+        # Extract version number (e.g., "v1", "v2", etc.)
         VERSION_NUMBER=$(echo $LATEST_TAG | sed 's/v//')
-        
-        # Increment the version number
+
+        # Increment version number
         NEW_VERSION=$((VERSION_NUMBER + 1))
         NEW_TAG="v$NEW_VERSION"
-        
-        # Set the tag as an environment variable
-        echo "New tag is $NEW_TAG"
+
+        # Output the new tag for later use
+        echo "New tag: $NEW_TAG"
         echo "tag=$NEW_TAG" >> $GITHUB_ENV
 
-    - name: Create New Git Tag and Push
+    - name: Create Git Tag and Push
       run: |
-        # Ensure the git repository is clean and synced with the remote
-        git status
-        
-        # Check if the tag already exists
-        if git rev-parse ${{ env.tag }} >/dev/null 2>&1; then
-          echo "Tag ${{ env.tag }} already exists. Skipping tag creation."
-        else
-          # Create a new Git tag with the incremented version
-          git tag ${{ env.tag }}
-          
-          # Push the tag to remote, force to ensure no conflicts
-          git push origin ${{ env.tag }} --force
-        fi
+        # Create and push the new tag if it doesn't already exist
+        git tag ${{ env.tag }}
+        git push origin ${{ env.tag }}
 
     - name: Build and Push Docker Image
       uses: docker/build-push-action@v3
