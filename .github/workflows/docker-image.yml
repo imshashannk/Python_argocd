@@ -27,6 +27,9 @@ jobs:
         run: |
           IMAGE_NAME="imshashannk/hello-world"
           
+          # Install jq if not available
+          sudo apt-get update && sudo apt-get install -y jq
+          
           # Fetch the latest version tag in MAJOR.MINOR.PATCH format
           LATEST_TAG=$(curl -s "https://registry.hub.docker.com/v1/repositories/$IMAGE_NAME/tags" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
           
@@ -47,3 +50,4 @@ jobs:
         with:
           context: .
           push: true
+          tags: imshashannk/hello-world:${{ env.tag }}
