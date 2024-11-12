@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Update Docker Image
 
 on:
   push:
@@ -6,47 +6,60 @@ on:
       - main
 
 jobs:
-  build-and-push:
+  update-image:
     runs-on: ubuntu-latest
-    
-    steps:
-      # Checkout the code from the repository
-      - name: Checkout code
-        uses: actions/checkout@v4
 
-      # Set up Docker Buildx for multi-platform builds
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Build, tag, and push the Docker image
-      - name: Build and push Docker image
+      - name: Get Latest Version Tag and Increment
+        id: version
+        run: |
+          IMAGE_NAME="imshashannk/hello-world"
+          
+          # Fetch the latest version tag in MAJOR.MINOR.PATCH format
+          LATEST_TAG=$(curl -s "https://registry.hub.docker.com/v1/repositories/$IMAGE_NAME/tags" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          
+          # Set default tag if no previous version found
+          if [ -z "$LATEST_TAG" ]; then
+            NEW_TAG="1.0.0"
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_TAG"
+            PATCH=$((PATCH + 1))
+            NEW_TAG="$MAJOR.$MINOR.$PATCH"
+          fi
+          
+          echo "New tag is $NEW_TAG"
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v3
         with:
           context: .
-          tags: |
-            imshashannk/hello-world:latest
           push: true
+          tags: imshashannk/hello-world:${{ env.NEW_TAG }}
 
-      # Configure Git for committing the updated tag to the repository
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "github-actions@github.com"
-
-      # Update Deployment YAML with the new tag and commit the change
       - name: Update Deployment YAML
         run: |
           # Ensure the latest tag is in the deployment YAML
-          sed -i 's|image: imshashannk/hello-world:.*|image: imshashannk/hello-world:latest|' manifests/deployment.yaml
+          sed -i 's|image: ***/hello-world:.*|image: imshashannk/hello-world:${{ env.NEW_TAG }}|' manifests/deployment.yaml
 
-          # Commit the changes if there’s an update
-          git add app.py
-          git commit -m "Update Docker image to latest version"
-          git push origin main
+          # Check if there are any changes in the deployment.yaml
+          if git diff --quiet manifests/deployment.yaml; then
+            echo "No changes to commit"
+          else
+            # Add and commit the modified deployment.yaml
+            git add manifests/deployment.yaml
+            git commit -m "Update Docker image to latest version: ${{ env.NEW_TAG }}"
+            git push origin main
+          fi
