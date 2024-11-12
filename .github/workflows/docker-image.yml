@@ -47,6 +47,3 @@ jobs:
         with:
           context: .
           push: true
-          tags: |
-            imshashannk/hello-world:${{ env.tag }}
-            imshashannk/hello-world:v2
