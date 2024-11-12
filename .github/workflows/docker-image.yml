@@ -44,7 +44,7 @@ jobs:
       - name: Update Deployment YAML
         run: |
           # Ensure the latest tag is in the deployment YAML
-          sed -i 's|image: imshashannk/hello-world:.*|image: imshashannk/hello-world:latest|' deployment.yaml
+          sed -i 's|image: imshashannk/hello-world:.*|image: imshashannk/hello-world:latest|' manifests/deployment.yaml
 
           # Commit the changes if there’s an update
           git add manifests/deployment.yaml
