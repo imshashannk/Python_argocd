@@ -34,10 +34,10 @@ jobs:
           
           # Fetch tags from Docker Hub
           echo "Fetching tags for image: $IMAGE_NAME"
-          TAGS=$(curl -s "https://registry.hub.docker.com/v1/repositories/$IMAGE_NAME/tags" | jq -r '.[].name')
+          TAGS=$(curl -s "https://hub.docker.com/v2/repositories/$IMAGE_NAME/tags/" | jq -r '.results[].name')
           echo "Available tags: $TAGS"
           
-          # Extract latest semver tag
+          # Extract the latest semver tag
           LATEST_TAG=$(echo "$TAGS" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
           echo "Latest tag found: $LATEST_TAG"
           
