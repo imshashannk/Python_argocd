@@ -74,3 +74,4 @@ jobs:
             git add manifests/deployment.yaml
             git commit -m "Update Docker image to latest version: ${{ env.NEW_TAG }}"
             git push origin main
+          fi
