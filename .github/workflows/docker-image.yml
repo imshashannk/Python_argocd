@@ -47,6 +47,6 @@ jobs:
           sed -i 's|image: imshashannk/hello-world:.*|image: imshashannk/hello-world:latest|' deployment.yaml
 
           # Commit the changes if there’s an update
-          git add deployment.yaml
+          git add manifests/deployment.yaml
           git commit -m "Update Docker image to latest version"
           git push origin main
