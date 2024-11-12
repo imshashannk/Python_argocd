@@ -62,6 +62,10 @@ jobs:
           echo "After update:"
           cat manifests/deployment.yaml
 
+          # Set Git user name and email for committing
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
           # Check if there are any changes in the deployment.yaml
           if git diff --quiet manifests/deployment.yaml; then
             echo "No changes to commit"
@@ -70,4 +74,3 @@ jobs:
             git add manifests/deployment.yaml
             git commit -m "Update Docker image to latest version: ${{ env.NEW_TAG }}"
             git push origin main
-          fi
