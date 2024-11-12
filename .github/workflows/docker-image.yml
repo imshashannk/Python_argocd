@@ -70,7 +70,7 @@ jobs:
             echo "No changes to commit"
           else
             # Step 9: Use GitHub token for authentication and push changes to the repo
-            git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
+            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
             git add manifests/deployment.yaml
             git commit -m "Update Docker image to latest version: ${{ env.NEW_TAG }}"
             git push origin main
