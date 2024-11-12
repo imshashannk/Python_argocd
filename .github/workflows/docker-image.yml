@@ -51,8 +51,16 @@ jobs:
 
       - name: Update Deployment YAML
         run: |
-          # Ensure the latest tag is in the deployment YAML
-          sed -i 's|image: ***/hello-world:.*|image: imshashannk/hello-world:${{ env.NEW_TAG }}|' manifests/deployment.yaml
+          # Debug: Show the content of deployment.yaml before update
+          echo "Before update:"
+          cat manifests/deployment.yaml
+
+          # Update the image tag to the new version in deployment.yaml
+          sed -i 's|image: imshashannk/hello-world:.*|image: imshashannk/hello-world:${{ env.NEW_TAG }}|' manifests/deployment.yaml
+
+          # Debug: Show the content of deployment.yaml after update
+          echo "After update:"
+          cat manifests/deployment.yaml
 
           # Check if there are any changes in the deployment.yaml
           if git diff --quiet manifests/deployment.yaml; then
