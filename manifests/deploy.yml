@@ -4,12 +4,11 @@ metadata:
   name: hello-world-deployment
   namespace: argocd
   annotations:
-    argocd-image-updater.argoproj.io/image-list: imshashannk/hello-world:myalias
-    argocd-image-updater.argoproj.io/myalias.update-strategy: tag
-    argocd-image-updater.argoproj.io/myalias.tag: latest
-    argocd-image-updater.argoproj.io/myalias.write-back-method: git
-    argocd-image-updater.argoproj.io/myalias.git-branch: main
-    argocd-image-updater.argoproj.io/myalias.force-update: "true"
+    argocd-image-updater.argoproj.io/image-list: imshashannk/hello-world
+    argocd-image-updater.argoproj.io/imshashannk-hello-world.update-strategy: latest
+    argocd-image-updater.argoproj.io/imshashannk-hello-world.write-back-method: git
+    argocd-image-updater.argoproj.io/imshashannk-hello-world.git-branch: main
+    argocd-image-updater.argoproj.io/imshashannk-hello-world.force-update: "true"
 
 spec:
   replicas: 2
@@ -23,7 +22,7 @@ spec:
     spec:
       containers:
       - name: hello-world
-        image: imshashannk/hello-world
+        image: imshashannk/hello-world:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
