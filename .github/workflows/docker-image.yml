@@ -26,12 +26,17 @@ jobs:
         id: version
         run: |
           IMAGE_NAME="imshashannk/hello-world"
-          LATEST_TAG=$(curl -s "https://registry.hub.docker.com/v1/repositories/$IMAGE_NAME/tags" | jq -r '.[].name' | grep -E '^[0-9]+$' | sort -n | tail -n 1)
+          
+          # Fetch latest version tag in MAJOR.MINOR.PATCH format
+          LATEST_TAG=$(curl -s "https://registry.hub.docker.com/v1/repositories/$IMAGE_NAME/tags" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          
           if [ -z "$LATEST_TAG" ]; then
-            NEW_TAG="1"
+            NEW_TAG="1.0.0"
           else
-            NEW_TAG=$((LATEST_TAG + 1))
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_TAG"
+            NEW_TAG="$MAJOR.$MINOR.$((PATCH + 1))"
           fi
+          
           echo "New tag is $NEW_TAG"
           echo "tag=$NEW_TAG" >> $GITHUB_ENV
 
@@ -42,4 +47,3 @@ jobs:
           push: true
           tags: |
             imshashannk/hello-world:${{ env.tag }}
-            imshashannk/hello-world:latest
