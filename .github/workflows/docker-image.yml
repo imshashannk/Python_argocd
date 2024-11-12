@@ -31,8 +31,16 @@ jobs:
         id: version
         run: |
           IMAGE_NAME="imshashannk/hello-world"
-          # Get the latest tag from Docker Hub (ensure the tag is a valid semver format)
-          LATEST_TAG=$(curl -s "https://registry.hub.docker.com/v1/repositories/$IMAGE_NAME/tags" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          
+          # Fetch tags from Docker Hub
+          echo "Fetching tags for image: $IMAGE_NAME"
+          TAGS=$(curl -s "https://registry.hub.docker.com/v1/repositories/$IMAGE_NAME/tags" | jq -r '.[].name')
+          echo "Available tags: $TAGS"
+          
+          # Extract latest semver tag
+          LATEST_TAG=$(echo "$TAGS" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          echo "Latest tag found: $LATEST_TAG"
+          
           if [ -z "$LATEST_TAG" ]; then
             NEW_TAG="1.0.0"
           else
@@ -40,6 +48,8 @@ jobs:
             PATCH=$((PATCH + 1))
             NEW_TAG="$MAJOR.$MINOR.$PATCH"
           fi
+
+          echo "New version tag: $NEW_TAG"
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
       # Step 5: Build and push the Docker image to Docker Hub with the new tag
@@ -50,7 +60,7 @@ jobs:
           push: true
           tags: imshashannk/hello-world:${{ env.NEW_TAG }}
 
-      # Step 6: Update the deployment.yaml with the new image tag
+      # Step 6: Update Deployment YAML with the new image tag
       - name: Update Deployment YAML
         run: |
           echo "Before update:"
@@ -70,7 +80,7 @@ jobs:
           if git diff --quiet manifests/deployment.yaml; then
             echo "No changes to commit"
           else
-            # Step 9: Push changes using the default GITHUB_TOKEN for authentication
+            # Step 9: Commit and push the updated deployment.yaml
             git add manifests/deployment.yaml
             git commit -m "Update Docker image to latest version: ${{ env.NEW_TAG }}"
             git push origin main
