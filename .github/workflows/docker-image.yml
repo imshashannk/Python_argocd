@@ -62,12 +62,14 @@ jobs:
         with:
           version: 'latest'
 
-      # Step 8: Run Trivy Vulnerability Scan
+      # Step 8: Run Trivy Vulnerability Scan with Cached Database
       - name: Run Trivy Vulnerability Scan
         run: |
           trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }}
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          TRIVY_CACHE_DIR: ~/.cache/trivy  # Specify cache directory
+          TRIVY_SKIP_UPDATE: true          # Disable update to avoid rate-limiting
         continue-on-error: true
 
       # Step 9: Push Docker Image to Docker Hub if no vulnerabilities are found
