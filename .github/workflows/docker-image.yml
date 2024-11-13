@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repository
+      # Step 1: Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up Docker Buildx for advanced build features
+      # Step 2: Set up Docker Buildx for advanced build options
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -26,7 +26,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Step 4: Get Latest Version Tag and Increment
+      # Step 4: Get Latest Version Tag and Increment for Docker Image
       - name: Get Latest Version Tag and Increment
         id: version
         run: |
@@ -42,12 +42,12 @@ jobs:
           fi
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
-      # Step 5: Build Docker Image
+      # Step 5: Build Docker Image with the New Tag
       - name: Build Docker Image
         run: |
           docker build -t imshashannk/hello-world:${{ env.NEW_TAG }} .
 
-      # Step 6: Cache Trivy Database for Vulnerability Scanning
+      # Step 6: Cache Trivy DB for faster vulnerability scans
       - name: Cache Trivy DB
         uses: actions/cache@v4
         with:
@@ -62,53 +62,44 @@ jobs:
         with:
           version: 'latest'
 
-      # Step 8: Run Trivy Vulnerability Scan
+      # Step 8: Run Trivy Vulnerability Scan on the Docker Image
       - name: Run Trivy Vulnerability Scan
         run: |
-          if [ -d "~/.cache/trivy/db" ]; then
-            trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }} --cache-dir ~/.cache/trivy --skip-db-update
-          else
-            trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }} --cache-dir ~/.cache/trivy
-          fi
+          trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }} --cache-dir ~/.cache/trivy || exit 1
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      # Step 9: Push Docker Image to Docker Hub
+      # Step 9: Push Docker Image to Docker Hub if the scan is successful
       - name: Push Docker Image
-        if: success()
         uses: docker/build-push-action@v3
         with:
           context: .
           push: true
           tags: imshashannk/hello-world:${{ env.NEW_TAG }}
 
-      # Step 10: Update Deployment YAML with New Docker Image Version
+      # Step 10: Update Deployment YAML with the new Docker Image Tag
       - name: Update Deployment YAML
         run: |
           sed -i 's|image: imshashannk/hello-world:.*|image: imshashannk/hello-world:${{ env.NEW_TAG }}|' manifests/deployment.yaml
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          if git diff --quiet manifests/deployment.yaml; then
-            echo "No changes to commit"
-          else
-            git add manifests/deployment.yaml
-            git commit -m "Update Docker image to latest version: ${{ env.NEW_TAG }}"
-            git push origin main
-          fi
+          git add manifests/deployment.yaml
+          git commit -m "Update Docker image to version ${{ env.NEW_TAG }}"
+          git push origin main
 
-      # Step 11: Set up Python for SonarCloud Analysis
+      # Step 11: Set up Python environment for SonarCloud analysis
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.9'
 
-      # Step 12: Install Python Dependencies
+      # Step 12: Install Python Dependencies for SonarCloud if any
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi
 
-      # Step 13: Run SonarCloud Analysis
+      # Step 13: Run SonarCloud Code Analysis
       - name: Run SonarCloud Analysis
         uses: sonarsource/sonarcloud-github-action@v1.3
         with:
