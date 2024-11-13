@@ -96,30 +96,23 @@ jobs:
             git push origin main
           fi
 
-      # Set up Java 17 (Temurin distribution)
-      - name: Set up Java 17
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      # Explicitly set JAVA_HOME and PATH for SonarScanner
-      - name: Set JAVA_HOME and PATH for SonarScanner
+      # Install SonarScanner (ensure it's the version compiled for Java 17)
+      - name: Install SonarScanner 4.6 (compatible with Java 17)
         run: |
-          echo "JAVA_HOME=/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.13-11/x64" >> $GITHUB_ENV
-          echo "PATH=$JAVA_HOME/bin:$PATH" >> $GITHUB_PATH
-
-      # Install SonarScanner CLI
-      - name: Install SonarScanner
-        run: |
-          curl -sSLo sonarscanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip
-          unzip sonarscanner.zip
+          curl -sSLo sonar-scanner-cli-4.6.2.2472-linux.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip
+          unzip sonar-scanner-cli-4.6.2.2472-linux.zip
           export SONAR_SCANNER_HOME=$(pwd)/sonar-scanner-4.6.2.2472-linux
           export PATH=$SONAR_SCANNER_HOME/bin:$PATH
           echo "SonarScanner is installed and available at $SONAR_SCANNER_HOME"
           echo "$SONAR_SCANNER_HOME/bin" >> $GITHUB_PATH  # Add SonarScanner bin folder to PATH permanently
 
-      # Run SonarCloud Analysis using SonarScanner CLI
+      # Set JAVA_HOME to Java 17
+      - name: Set JAVA_HOME to Java 17
+        run: |
+          echo "JAVA_HOME=/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.13-11/x64" >> $GITHUB_ENV
+          echo "PATH=$JAVA_HOME/bin:$PATH" >> $GITHUB_PATH
+
+      # Run SonarCloud Analysis using SonarScanner
       - name: Run SonarCloud Analysis
         run: |
           sonar-scanner \
