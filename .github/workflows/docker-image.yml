@@ -11,22 +11,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
+      # Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up Docker Buildx for advanced build options
+      # Set up Docker Buildx for building multi-platform images
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Step 3: Log in to Docker Hub
+      # Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Step 4: Get Latest Version Tag and Increment for Docker Image
+      # Get the latest version tag and increment it
       - name: Get Latest Version Tag and Increment
         id: version
         run: |
@@ -42,12 +42,12 @@ jobs:
           fi
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
-      # Step 5: Build Docker Image with the New Tag
+      # Build Docker Image
       - name: Build Docker Image
         run: |
           docker build -t imshashannk/hello-world:${{ env.NEW_TAG }} .
 
-      # Step 6: Cache Trivy DB for faster vulnerability scans
+      # Cache Trivy DB
       - name: Cache Trivy DB
         uses: actions/cache@v4
         with:
@@ -56,56 +56,65 @@ jobs:
           restore-keys: |
             trivy-db-${{ runner.os }}-
 
-      # Step 7: Set up Trivy for Vulnerability Scanning
+      # Set up Trivy for scanning vulnerabilities
       - name: Set up Trivy
         uses: aquasecurity/setup-trivy@v0.2.2
         with:
           version: 'latest'
 
-      # Step 8: Run Trivy Vulnerability Scan on the Docker Image
+      # Run Trivy Vulnerability Scan
       - name: Run Trivy Vulnerability Scan
         run: |
-          trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }} --cache-dir ~/.cache/trivy || exit 1
+          if [ -d "~/.cache/trivy/db" ]; then
+            trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }} --cache-dir ~/.cache/trivy --skip-db-update
+          else
+            trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }} --cache-dir ~/.cache/trivy
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      # Step 9: Push Docker Image to Docker Hub if the scan is successful
+      # Push Docker Image to Docker Hub
       - name: Push Docker Image
+        if: success()
         uses: docker/build-push-action@v3
         with:
           context: .
           push: true
           tags: imshashannk/hello-world:${{ env.NEW_TAG }}
 
-      # Step 10: Update Deployment YAML with the new Docker Image Tag
+      # Update Deployment YAML file with the new image tag
       - name: Update Deployment YAML
         run: |
           sed -i 's|image: imshashannk/hello-world:.*|image: imshashannk/hello-world:${{ env.NEW_TAG }}|' manifests/deployment.yaml
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git add manifests/deployment.yaml
-          git commit -m "Update Docker image to version ${{ env.NEW_TAG }}"
-          git push origin main
+          if git diff --quiet manifests/deployment.yaml; then
+            echo "No changes to commit"
+          else
+            git add manifests/deployment.yaml
+            git commit -m "Update Docker image to latest version: ${{ env.NEW_TAG }}"
+            git push origin main
+          fi
 
-      # Step 11: Set up Java 17 for SonarCloud
+      # Set up Java for SonarCloud analysis
       - name: Set up Java 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
+          distribution: 'adoptopenjdk'  # Specify the distribution (e.g., adoptopenjdk, openjdk)
 
-      # Step 12: Set up Python environment for SonarCloud analysis
+      # Install Python dependencies if needed
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.9'
 
-      # Step 13: Install Python Dependencies for SonarCloud if any
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi
 
-      # Step 14: Run SonarCloud Code Analysis
+      # Run SonarCloud Analysis
       - name: Run SonarCloud Analysis
         uses: sonarsource/sonarcloud-github-action@v1.3
         with:
