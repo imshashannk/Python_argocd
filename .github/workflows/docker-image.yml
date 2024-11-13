@@ -11,18 +11,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Step 2: Set up Docker Buildx for advanced build features
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Step 3: Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # Step 4: Get Latest Version Tag and Increment
       - name: Get Latest Version Tag and Increment
         id: version
         run: |
@@ -38,10 +42,12 @@ jobs:
           fi
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
+      # Step 5: Build Docker Image
       - name: Build Docker Image
         run: |
           docker build -t imshashannk/hello-world:${{ env.NEW_TAG }} .
 
+      # Step 6: Cache Trivy Database for Vulnerability Scanning
       - name: Cache Trivy DB
         uses: actions/cache@v4
         with:
@@ -50,11 +56,13 @@ jobs:
           restore-keys: |
             trivy-db-${{ runner.os }}-
 
+      # Step 7: Set up Trivy for Vulnerability Scanning
       - name: Set up Trivy
         uses: aquasecurity/setup-trivy@v0.2.2
         with:
           version: 'latest'
 
+      # Step 8: Run Trivy Vulnerability Scan
       - name: Run Trivy Vulnerability Scan
         run: |
           if [ -d "~/.cache/trivy/db" ]; then
@@ -65,6 +73,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
+      # Step 9: Push Docker Image to Docker Hub
       - name: Push Docker Image
         if: success()
         uses: docker/build-push-action@v3
@@ -73,6 +82,7 @@ jobs:
           push: true
           tags: imshashannk/hello-world:${{ env.NEW_TAG }}
 
+      # Step 10: Update Deployment YAML with New Docker Image Version
       - name: Update Deployment YAML
         run: |
           sed -i 's|image: imshashannk/hello-world:.*|image: imshashannk/hello-world:${{ env.NEW_TAG }}|' manifests/deployment.yaml
@@ -86,16 +96,19 @@ jobs:
             git push origin main
           fi
 
+      # Step 11: Set up Python for SonarCloud Analysis
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.9'
 
+      # Step 12: Install Python Dependencies
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi
 
+      # Step 13: Run SonarCloud Analysis
       - name: Run SonarCloud Analysis
         uses: sonarsource/sonarcloud-github-action@v1.3
         with:
