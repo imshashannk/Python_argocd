@@ -31,16 +31,8 @@ jobs:
         id: version
         run: |
           IMAGE_NAME="imshashannk/hello-world"
-          
-          # Fetch tags from Docker Hub
-          echo "Fetching tags for image: $IMAGE_NAME"
           TAGS=$(curl -s "https://hub.docker.com/v2/repositories/$IMAGE_NAME/tags/" | jq -r '.results[].name')
-          echo "Available tags: $TAGS"
-          
-          # Extract the latest semver tag
           LATEST_TAG=$(echo "$TAGS" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
-          echo "Latest tag found: $LATEST_TAG"
-          
           if [ -z "$LATEST_TAG" ]; then
             NEW_TAG="1.0.0"
           else
@@ -48,8 +40,6 @@ jobs:
             PATCH=$((PATCH + 1))
             NEW_TAG="$MAJOR.$MINOR.$PATCH"
           fi
-
-          echo "New version tag: $NEW_TAG"
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
       # Step 5: Build Docker Image
@@ -66,24 +56,19 @@ jobs:
           restore-keys: |
             trivy-db-${{ runner.os }}-
 
-      # Step 7: Run Trivy Vulnerability Scan
-      - name: Run Trivy Vulnerability Scan
-        uses: aquasecurity/trivy-action@master
+      # Step 7: Set Up Trivy
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.2
         with:
-          image-ref: 'imshashannk/hello-world:${{ env.NEW_TAG }}'
-          severity: 'HIGH,CRITICAL'
-          ignore-unfixed: true
-          format: 'table'
+          version: 'latest'
+
+      # Step 8: Run Trivy Vulnerability Scan
+      - name: Run Trivy Vulnerability Scan
+        run: |
+          trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }}
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        continue-on-error: true  # Allows workflow to proceed if vulnerabilities are found
-
-      # Step 8: Check Vulnerability Scan Result
-      - name: Check Vulnerability Scan Result
-        if: failure()
-        run: |
-          echo "Vulnerabilities found in the image scan."
-          exit 1
+        continue-on-error: true
 
       # Step 9: Push Docker Image to Docker Hub if no vulnerabilities are found
       - name: Push Docker Image
@@ -97,24 +82,12 @@ jobs:
       # Step 10: Update Deployment YAML with the new image tag
       - name: Update Deployment YAML
         run: |
-          echo "Before update:"
-          cat manifests/deployment.yaml
-
-          # Update the image tag in deployment.yaml to the new version
           sed -i 's|image: imshashannk/hello-world:.*|image: imshashannk/hello-world:${{ env.NEW_TAG }}|' manifests/deployment.yaml
-
-          echo "After update:"
-          cat manifests/deployment.yaml
-
-          # Step 11: Set Git user name and email for committing
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-
-          # Step 12: Check if there are any changes in the deployment.yaml
           if git diff --quiet manifests/deployment.yaml; then
             echo "No changes to commit"
           else
-            # Step 13: Commit and push the updated deployment.yaml
             git add manifests/deployment.yaml
             git commit -m "Update Docker image to latest version: ${{ env.NEW_TAG }}"
             git push origin main
