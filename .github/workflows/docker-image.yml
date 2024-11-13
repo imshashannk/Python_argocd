@@ -96,12 +96,12 @@ jobs:
             git push origin main
           fi
 
-      # Set up Java (use Temurin as the new distribution name)
+      # Set up Java 17 (Temurin distribution)
       - name: Set up Java 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
-          distribution: 'temurin'  # Use Temurin instead of adoptopenjdk
+          distribution: 'temurin'
 
       # Set up Python for any necessary tasks
       - name: Set up Python
@@ -114,10 +114,11 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi
 
-      # Run SonarCloud Analysis
+      # Run SonarCloud Analysis with Java 17
       - name: Run SonarCloud Analysis
         uses: sonarsource/sonarcloud-github-action@v1.3
         with:
           projectBaseDir: .
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.13-11/x64
