@@ -11,22 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Step 3: Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Step 4: Get the latest version tag from Docker Hub and increment
       - name: Get Latest Version Tag and Increment
         id: version
         run: |
@@ -42,12 +38,10 @@ jobs:
           fi
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
-      # Step 5: Build Docker Image
       - name: Build Docker Image
         run: |
           docker build -t imshashannk/hello-world:${{ env.NEW_TAG }} .
 
-      # Step 6: Cache Trivy Vulnerability Database
       - name: Cache Trivy DB
         uses: actions/cache@v4
         with:
@@ -56,23 +50,24 @@ jobs:
           restore-keys: |
             trivy-db-${{ runner.os }}-
 
-      # Step 7: Set Up Trivy
       - name: Set up Trivy
         uses: aquasecurity/setup-trivy@v0.2.2
         with:
           version: 'latest'
 
-      # Step 8: Run Trivy Vulnerability Scan with Cached Database or First-time Download
       - name: Run Trivy Vulnerability Scan
         run: |
-          # Allow first-time download if the cache is empty
-          trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }}
+          # Check if Trivy DB cache exists
+          if [ -d "~/.cache/trivy/db" ]; then
+            # If cache exists, skip DB update
+            trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }} --cache-dir ~/.cache/trivy --skip-db-update
+          else
+            # If no cache, download DB on first run
+            trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }} --cache-dir ~/.cache/trivy
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-          TRIVY_CACHE_DIR: ~/.cache/trivy  # Specify cache directory
-          TRIVY_SKIP_DB_UPDATE: true       # Skip DB update unless it's the first run
 
-      # Step 9: Push Docker Image to Docker Hub if no vulnerabilities are found
       - name: Push Docker Image
         if: success()
         uses: docker/build-push-action@v3
@@ -81,7 +76,6 @@ jobs:
           push: true
           tags: imshashannk/hello-world:${{ env.NEW_TAG }}
 
-      # Step 10: Update Deployment YAML with the new image tag
       - name: Update Deployment YAML
         run: |
           sed -i 's|image: imshashannk/hello-world:.*|image: imshashannk/hello-world:${{ env.NEW_TAG }}|' manifests/deployment.yaml
