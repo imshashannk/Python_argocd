@@ -104,7 +104,7 @@ jobs:
           distribution: 'temurin'
 
       # Explicitly Set JAVA_HOME for SonarCloud Action
-      - name: Set JAVA_HOME and PATH
+      - name: Set JAVA_HOME and PATH for SonarScanner
         run: |
           echo "JAVA_HOME=/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.13-11/x64" >> $GITHUB_ENV
           echo "/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.13-11/x64/bin" >> $GITHUB_PATH
@@ -117,6 +117,7 @@ jobs:
           export SONAR_SCANNER_HOME=$(pwd)/sonar-scanner-4.6.2.2472-linux
           export PATH=$SONAR_SCANNER_HOME/bin:$PATH
           echo "SonarScanner is installed and available at $SONAR_SCANNER_HOME"
+          echo "$SONAR_SCANNER_HOME/bin" >> $GITHUB_PATH  # Add SonarScanner bin folder to PATH permanently
 
       # Run SonarCloud Analysis using SonarScanner CLI
       - name: Run SonarCloud Analysis
