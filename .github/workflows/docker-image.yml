@@ -116,6 +116,7 @@ jobs:
           unzip sonarscanner.zip
           export SONAR_SCANNER_HOME=$(pwd)/sonar-scanner-4.6.2.2472-linux
           export PATH=$SONAR_SCANNER_HOME/bin:$PATH
+          echo "SonarScanner is installed and available at $SONAR_SCANNER_HOME"
 
       # Run SonarCloud Analysis using SonarScanner CLI
       - name: Run SonarCloud Analysis
