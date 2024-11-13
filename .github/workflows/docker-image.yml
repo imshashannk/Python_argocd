@@ -7,8 +7,30 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Job to run SonarQube code quality analysis
+  sonarqube:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up JDK (if applicable, for Java projects)
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'  # Use appropriate Java version
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarcloud-github-action@v1
+        with:
+          organization: 'your-org-name'  # Replace with your SonarQube organization name
+          projectKey: 'your-project-key'  # Replace with your SonarQube project key
+          token: ${{ secrets.SONARQUBE_TOKEN }}
+
+  # Job to update Docker image, run security scan, and deploy
   update-image:
     runs-on: ubuntu-latest
+    needs: sonarqube  # This job will run after the SonarQube analysis
 
     steps:
       - name: Checkout repository
