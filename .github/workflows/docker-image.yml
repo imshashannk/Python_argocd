@@ -14,13 +14,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # List files to debug
+      - name: List files in the repository
+        run: ls -la
+
       # Set up Python environment
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      # Install dependencies (e.g., requirements.txt for Python project)
+      # Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -76,12 +80,9 @@ jobs:
       # Run Trivy Vulnerability Scan
       - name: Run Trivy Vulnerability Scan
         run: |
-          # Check if Trivy DB cache exists
           if [ -d "~/.cache/trivy/db" ]; then
-            # If cache exists, skip DB update
             trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }} --cache-dir ~/.cache/trivy --skip-db-update
           else
-            # If no cache, download DB on first run
             trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }} --cache-dir ~/.cache/trivy
           fi
         env:
