@@ -14,9 +14,9 @@ permissions:
 jobs:
   trivy-scan:
     permissions:
-      contents: read # Required for actions/checkout to fetch code
-      security-events: write # Required for uploading SARIF results
-      actions: read # Only required for private repositories
+      contents: read
+      security-events: write
+      actions: read
     name: Trivy Scan and Upload Results
     runs-on: ubuntu-20.04
 
@@ -49,7 +49,7 @@ jobs:
         uses: aquasecurity/trivy-action@7b7aa264d83dc58691451798b4d117d53d21edfe
         env:
           TRIVY_CACHE_DIR: ~/.cache/trivy
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Use a PAT if rate limit issues persist
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           image-ref: 'docker.io/my-organization/my-app:${{ github.sha }}'
           format: 'template'
@@ -57,7 +57,7 @@ jobs:
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
           vuln-type: 'os,library'
-          skip-db-update: true # Prevents frequent DB updates to avoid rate limits
+          skip-db-update: true
 
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
