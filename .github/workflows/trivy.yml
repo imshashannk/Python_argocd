@@ -13,33 +13,21 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Trivy Security Scan
-        uses: aquasecurity/trivy-action@v0.10.0  # Use the latest stable version of Trivy action
+        uses: aquasecurity/trivy-action@master  # Use master to get the latest stable version
         with:
           image-ref: "docker.io/my-organization/my-app:${{ github.sha }}"
           format: "template"
-          template: "@contrib/sarif.tpl"
+          template: "@/contrib/sarif.tpl"
           severity: "CRITICAL,HIGH"
           vuln-type: "os,library"
           output: "trivy-results.sarif"
         env:
           TRIVY_CACHE_DIR: /tmp/trivy-cache
 
-      # Step to notify on vulnerability detection
       - name: Send Slack Notification on Vulnerability Alert
         if: failure()  # Only send notification if scan has vulnerabilities
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           curl -X POST -H 'Content-type: application/json' \
-          --data "{\"text\":\"⚠️ Security vulnerabilities detected in $GITHUB_REPOSITORY. Please review the Trivy scan results.\"}" \
-          "$SLACK_WEBHOOK_URL"
-
-      # Step to notify on successful push with no vulnerabilities
-      - name: Send Slack Notification on Successful Push
-        if: success()  # Only send notification if the scan completes successfully without vulnerabilities
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          curl -X POST -H 'Content-type: application/json' \
-          --data "{\"text\":\"✅ Code pushed successfully to $GITHUB_REPOSITORY on the main branch. No critical or high vulnerabilities detected.\"}" \
-          "$SLACK_WEBHOOK_URL"
+          --d
