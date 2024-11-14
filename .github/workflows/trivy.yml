@@ -1,65 +1,32 @@
-name: trivy
+name: Trivy Vulnerability Scan
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  schedule:
-    - cron: '40 8 * * 2'
-
-permissions:
-  contents: read
+    branches:
+      - main
 
 jobs:
-  trivy-scan:
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-    name: Trivy Scan and Upload Results
-    runs-on: ubuntu-20.04
-
+  trivy_scan:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout the code
+        uses: actions/checkout@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+      - name: Trivy Security Scan
+        uses: aquasecurity/trivy-action@v0.1.0  # Make sure you are using a supported version
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Cache Trivy DB
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/trivy
-          key: ${{ runner.os }}-trivy-db-${{ hashFiles('Dockerfile') || 'fallback' }}
-          restore-keys: |
-            ${{ runner.os }}-trivy-db-
-
-      - name: Build Docker Image
-        run: |
-          docker build -t docker.io/my-organization/my-app:${{ github.sha }} .
-
-      - name: Run Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@7b7aa264d83dc58691451798b4d117d53d21edfe
+          image-ref: "docker.io/my-organization/my-app:${{ github.sha }}"
+          format: "template"
+          template: "@/contrib/sarif.tpl"
+          severity: "CRITICAL,HIGH"
+          vuln-type: "os,library"
+          output: "trivy-results.sarif"
         env:
-          TRIVY_CACHE_DIR: ~/.cache/trivy
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          image-ref: 'docker.io/my-organization/my-app:${{ github.sha }}'
-          format: 'template'
-          template: '@/contrib/sarif.tpl'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          vuln-type: 'os,library'
-          skip-db-update: true
+          TRIVY_CACHE_DIR: /tmp/trivy-cache
 
-      - name: Upload Trivy results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: 'trivy-results.sarif'
+      - name: Send Slack Notification on Vulnerability Alert
+        if: failure()  # Only send notification if scan has vulnerabilities
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"⚠️ Security vulnerabilities detected in ${GITHUB_REPOSITORY}. Please review the Trivy scan results."}' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
