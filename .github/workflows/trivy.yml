@@ -8,6 +8,7 @@ on:
 jobs:
   trivy_scan:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout the code
         uses: actions/checkout@v2
@@ -24,7 +25,6 @@ jobs:
         env:
           TRIVY_CACHE_DIR: /tmp/trivy-cache
 
-      # Notification on vulnerability detection (if Trivy scan fails)
       - name: Send Slack Notification on Vulnerability Alert
         if: failure()  # Only send notification if scan has vulnerabilities
         env:
@@ -34,7 +34,6 @@ jobs:
           --data "{\"text\":\"⚠️ Security vulnerabilities detected in $GITHUB_REPOSITORY. Please review the Trivy scan results.\"}" \
           "$SLACK_WEBHOOK_URL"
 
-      # Notification on successful push with no vulnerabilities detected
       - name: Send Slack Notification on Successful Push
         if: success()  # Only send notification if the scan completes successfully without vulnerabilities
         env:
