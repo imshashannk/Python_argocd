@@ -1,0 +1,45 @@
+name: GitHub Actions Notifications to Slack
+
+on:
+  push:
+    branches:
+      - main  # Trigger on commits to the main branch
+  workflow_run:
+    workflows: ["Build"]
+    types:
+      - completed  # Trigger when the build workflow completes
+
+  repository_vulnerability_alert:  # Trigger on vulnerability alerts
+    types: [created, updated]
+
+jobs:
+  notify_on_commit_success:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification for successful commit
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"🚀 Commit to main branch was successful! Commit: '${{ github.sha }}'. Repository: '${{ github.repository }}'"}' \
+          https://hooks.slack.com/services/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
+
+  notify_on_job_failure:
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    needs: [notify_on_commit_success]  # This job runs only if the previous job fails
+    steps:
+      - name: Send Slack notification for job failure
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"❌ The GitHub Action job has failed. Please check the details in the Actions tab for more information."}' \
+          https://hooks.slack.com/services/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
+
+  notify_on_vulnerability_alert:
+    if: ${{ github.event_name == 'repository_vulnerability_alert' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification for vulnerability alert
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"⚠️ Security vulnerability alert in repository '${{ github.repository }}'. Title: '${{ github.event.alert.title }}', Severity: '${{ github.event.alert.severity }}'. Advisory URL: '${{ github.event.alert.advisory.url }}'}' \
+          https://hooks.slack.com/services/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
