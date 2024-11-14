@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: hello-world
-        image: imshashannk/hello-world:1.0.51
+        image: imshashannk/hello-world:1.0.52
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
