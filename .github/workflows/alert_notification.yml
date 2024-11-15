@@ -1,0 +1,67 @@
+name: Docker Image Vulnerability Alerts
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  trivy-scan-and-alert:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      # Authenticate with Docker Hub
+      - name: Authenticate with Docker Hub
+        run: echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login --username ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+
+      # Pull Docker Image for Scanning
+      - name: Pull Docker Image
+        id: pull-image
+        run: |
+          docker pull my-organization/my-app:${{ github.sha }}
+          echo "image_ref=my-organization/my-app:${{ github.sha }}" >> $GITHUB_ENV
+
+      # Scan Docker Image with Trivy
+      - name: Trivy Vulnerability Scan
+        id: trivy-scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{ env.image_ref }}"
+          format: "table"
+          severity: "CRITICAL,HIGH"
+        env:
+          TRIVY_CACHE_DIR: /tmp/trivy-cache
+
+      # Send Slack Notification on Image Push
+      - name: Send Slack Notification on Image Push
+        if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data "{\"text\":\"✅ Docker image successfully pushed: ${{ env.image_ref }}.\"}" \
+          "$SLACK_WEBHOOK_URL"
+
+      # Send Slack Notification on Image Vulnerabilities
+      - name: Send Slack Notification on Image Vulnerabilities
+        if: steps.trivy-scan.outcome == 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data "{\"text\":\"⚠️ Trivy detected vulnerabilities in the Docker image ${{ env.image_ref }}. Please review.\"}" \
+          "$SLACK_WEBHOOK_URL"
+
+      # Send Slack Notification for Success (No Vulnerabilities)
+      - name: Send Slack Notification for Success
+        if: success()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data "{\"text\":\"✅ No critical vulnerabilities detected in the Docker image: ${{ env.image_ref }}.\"}" \
+          "$SLACK_WEBHOOK_URL"
