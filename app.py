@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def hello_world():
-    return "Done!"
+    return "D"
 
 def ingress():
     return "ingress is working!"
