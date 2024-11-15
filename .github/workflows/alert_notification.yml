@@ -10,58 +10,85 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the code
+      # Step 1: Checkout repository
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      # Authenticate with Docker Hub using username and password
-      - name: Authenticate with Docker Hub
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
+      # Step 2: Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      # Pull Docker Image for Scanning
-      - name: Pull Docker Image
-        id: pull-image
+      # Step 3: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Step 4: Get Latest Version Tag and Increment
+      - name: Get Latest Version Tag and Increment
+        id: version
         run: |
-          docker pull my-organization/my-app:${{ github.sha }}
-          echo "image_ref=my-organization/my-app:${{ github.sha }}" >> $GITHUB_ENV
+          IMAGE_NAME="imshashannk/hello-world"
+          TAGS=$(curl -s "https://hub.docker.com/v2/repositories/$IMAGE_NAME/tags/" | jq -r '.results[].name')
+          LATEST_TAG=$(echo "$TAGS" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          if [ -z "$LATEST_TAG" ]; then
+            NEW_TAG="1.0.0"
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_TAG"
+            PATCH=$((PATCH + 1))
+            NEW_TAG="$MAJOR.$MINOR.$PATCH"
+          fi
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
-      # Scan Docker Image with Trivy
+      # Step 5: Build Docker Image
+      - name: Build Docker Image
+        run: |
+          docker build -t imshashannk/hello-world:${{ env.NEW_TAG }} .
+          docker push imshashannk/hello-world:${{ env.NEW_TAG }}
+
+      # Step 6: Cache Trivy DB
+      - name: Cache Trivy DB
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ hashFiles('**/Dockerfile') }}
+          restore-keys: |
+            trivy-db-${{ runner.os }}-
+
+      # Step 7: Set up Trivy
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.2
+        with:
+          version: 'latest'
+
+      # Step 8: Scan Docker Image with Trivy
       - name: Trivy Vulnerability Scan
         id: trivy-scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "${{ env.image_ref }}"
+          image-ref: "imshashannk/hello-world:${{ env.NEW_TAG }}"
           format: "table"
           severity: "CRITICAL,HIGH"
         env:
           TRIVY_CACHE_DIR: /tmp/trivy-cache
 
-      # Send Slack Notification on Image Push
-      - name: Send Slack Notification on Image Push
-        if: success()
+      # Step 9: Send Slack Notification on Vulnerabilities
+      - name: Send Slack Notification on Vulnerabilities
+        if: failure()  # Only if vulnerabilities are found
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           curl -X POST -H 'Content-type: application/json' \
-          --data "{\"text\":\"✅ Docker image successfully pushed: ${{ env.image_ref }}.\"}" \
+          --data "{\"text\":\"⚠️ Trivy detected vulnerabilities in the Docker image imshashannk/hello-world:${{ env.NEW_TAG }}. Please review.\"}" \
           "$SLACK_WEBHOOK_URL"
 
-      # Send Slack Notification on Image Vulnerabilities
-      - name: Send Slack Notification on Image Vulnerabilities
-        if: steps.trivy-scan.outcome == 'failure'
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          curl -X POST -H 'Content-type: application/json' \
-          --data "{\"text\":\"⚠️ Trivy detected vulnerabilities in the Docker image ${{ env.image_ref }}. Please review.\"}" \
-          "$SLACK_WEBHOOK_URL"
-
-      # Send Slack Notification for Success (No Vulnerabilities)
+      # Step 10: Send Slack Notification for Success
       - name: Send Slack Notification for Success
-        if: success()
+        if: success()  # Only if no vulnerabilities are found
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           curl -X POST -H 'Content-type: application/json' \
-          --data "{\"text\":\"✅ No critical vulnerabilities detected in the Docker image: ${{ env.image_ref }}.\"}" \
+          --data "{\"text\":\"✅ Docker image successfully pushed and no critical vulnerabilities detected: imshashannk/hello-world:${{ env.NEW_TAG }}.\"}" \
           "$SLACK_WEBHOOK_URL"
