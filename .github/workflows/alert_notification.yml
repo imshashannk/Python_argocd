@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repository
+      # Step 1: Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
@@ -65,30 +65,27 @@ jobs:
       # Step 8: Scan Docker Image with Trivy
       - name: Trivy Vulnerability Scan
         id: trivy-scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: "imshashannk/hello-world:${{ env.NEW_TAG }}"
-          format: "table"
-          severity: "CRITICAL,HIGH"
-        env:
-          TRIVY_CACHE_DIR: /tmp/trivy-cache
+        run: |
+          trivy image imshashannk/hello-world:${{ env.NEW_TAG }} \
+            --severity CRITICAL,HIGH --format table || echo "Scan failed" > trivy-error.log
+        continue-on-error: true
 
-      # Step 9: Send Slack Notification on Vulnerabilities
-      - name: Send Slack Notification on Vulnerabilities
-        if: failure()  # Only if vulnerabilities are found
+      # Step 9: Check for Trivy Errors and Send Slack Alerts
+      - name: Send Slack Notification for Vulnerabilities
+        if: always()  # Ensure this step runs even if the previous step fails
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          curl -X POST -H 'Content-type: application/json' \
-          --data "{\"text\":\"⚠️ Trivy detected vulnerabilities in the Docker image imshashannk/hello-world:${{ env.NEW_TAG }}. Please review.\"}" \
-          "$SLACK_WEBHOOK_URL"
-
-      # Step 10: Send Slack Notification for Success
-      - name: Send Slack Notification for Success
-        if: success()  # Only if no vulnerabilities are found
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          curl -X POST -H 'Content-type: application/json' \
-          --data "{\"text\":\"✅ Docker image successfully pushed and no critical vulnerabilities detected: imshashannk/hello-world:${{ env.NEW_TAG }}.\"}" \
-          "$SLACK_WEBHOOK_URL"
+          if grep -q "Scan failed" trivy-error.log; then
+            curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"⚠️ Trivy scan failed for image: imshashannk/hello-world:${{ env.NEW_TAG }}. Please check the logs.\"}" \
+            "$SLACK_WEBHOOK_URL"
+          elif [ $(cat trivy-output.log | grep -c 'CRITICAL\|HIGH') -gt 0 ]; then
+            curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"⚠️ Vulnerabilities detected in image: imshashannk/hello-world:${{ env.NEW_TAG }}. Please review the results.\"}" \
+            "$SLACK_WEBHOOK_URL"
+          else
+            curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"✅ No critical or high vulnerabilities detected in image: imshashannk/hello-world:${{ env.NEW_TAG }}.\"}" \
+            "$SLACK_WEBHOOK_URL"
+          fi
