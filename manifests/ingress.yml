@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hello-world-ingress
+  namespace: argocd  # Ensure this matches the namespace in your deployment
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - host: hello-world.local  # This can be any domain you use, for local testing use "hello-world.local"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hello-world-service  # The name of your service
+                port:
+                  number: 80  # The port your service is exposed on
