@@ -14,9 +14,9 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      # Authenticate with Docker Hub
+      # Authenticate with Docker Hub using username and password
       - name: Authenticate with Docker Hub
-        run: echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login --username ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
       # Pull Docker Image for Scanning
       - name: Pull Docker Image
