@@ -37,33 +37,10 @@ jobs:
             NEW_TAG="$MAJOR.$MINOR.$PATCH"
           fi
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+
       - name: Build Docker Image
         run: |
           docker build -t imshashannk/hello-world:${{ env.NEW_TAG }} .
-      - name: Cache Trivy DB
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/trivy
-          key: trivy-db-${{ runner.os }}-${{ hashFiles('**/Dockerfile') }}
-          restore-keys: |
-            trivy-db-${{ runner.os }}-
-      - name: Set up Trivy
-        uses: aquasecurity/setup-trivy@v0.2.2
-        with:
-          version: 'latest'
-
-      - name: Run Trivy Vulnerability Scan
-        run: |
-          # Check if Trivy DB cache exists
-          if [ -d "~/.cache/trivy/db" ]; then
-            # If cache exists, skip DB update
-            trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }} --cache-dir ~/.cache/trivy --skip-db-update
-          else
-            # If no cache, download DB on first run
-            trivy image --ignore-unfixed --severity HIGH,CRITICAL imshashannk/hello-world:${{ env.NEW_TAG }} --cache-dir ~/.cache/trivy
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Push Docker Image
         if: success()
