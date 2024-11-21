@@ -39,10 +39,10 @@ jobs:
           docker build -t imshashannk/python-argocd:${{ github.sha }} .
           trivy image --format json --output trivy-report.json imshashannk/python-argocd:${{ github.sha }}
 
-      # Step 6: Upload Trivy scan results as artifact
+      # Step 6: Upload Trivy scan results as artifact (Updated to v3)
       - name: Upload Trivy scan results
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: trivy-scan-results
           path: trivy-report.json
