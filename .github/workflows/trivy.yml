@@ -1,4 +1,4 @@
-name: Trivy Vulnerability Scan
+name: Trivy Vulnerability Scan and Slack Notification
 
 on:
   push:
@@ -9,62 +9,46 @@ on:
       - main
 
 jobs:
-  trivy_scan:
+  trivy-scan:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Checkout the repository
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      # Step 2: Set up Docker Buildx (Optional, if using multi-platform builds)
-      - name: Set up Docker Buildx
+      - name: Set up Docker
         uses: docker/setup-buildx-action@v2
 
-      # Step 3: Cache Trivy for faster subsequent runs
-      - name: Cache Trivy
-        uses: actions/cache@v2
-        with:
-          path: /tmp/.cache/trivy
-          key: ${{ runner.os }}-trivy-${{ github.sha }}
-
-      # Step 4: Install Trivy
-      - name: Install Trivy
+      - name: Run Trivy scan
+        id: trivy_scan
         run: |
-          curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.36.0/trivy_0.36.0_Linux-64bit.deb -o trivy.deb
-          sudo dpkg -i trivy.deb
+          # Run Trivy to scan the Docker image
+          docker run --rm -v $(pwd):/root/.cache/ -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.29.1 --format json --output trivy-report.json imshashannk/python-argocd:latest
 
-      # Step 5: Run Trivy vulnerability scan on Docker image and generate JSON output
-      - name: Run Trivy vulnerability scan on Docker image
+      - name: Process Trivy report and prepare Slack message
+        id: process_report
         run: |
-          docker build -t imshashannk/python-argocd:${{ github.sha }} .
-          trivy image --format json --output trivy-report.json imshashannk/python-argocd:${{ github.sha }}
-
-      # Step 6: Upload Trivy scan results as artifact (Updated to v3)
-      - name: Upload Trivy scan results
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: trivy-scan-results
-          path: trivy-report.json
-
-      # Step 7: Parse Trivy report and format the output for Slack
-      - name: Parse Trivy scan results and prepare Slack message
-        id: parse_trivy_report
-        run: |
-          vulnerabilities=$(jq '[.[] | select(.Vulnerabilities != null) | {PkgName: .Target, Vulnerabilities: .Vulnerabilities[]}]' trivy-report.json)
-          if [[ -z "$vulnerabilities" ]]; then
+          # Parse the Trivy report and extract vulnerabilities
+          vulnerabilities=$(jq '[.[] | select(.Vulnerabilities != null) | {PkgName: .Target, Vulnerabilities: .Vulnerabilities // []}]' trivy-report.json)
+          
+          # Check if vulnerabilities were found
+          if [[ -z "$vulnerabilities" || "$vulnerabilities" == "[]" ]]; then
             echo "No vulnerabilities found." > result.txt
           else
+            # Format the vulnerabilities and write to result.txt
             echo "$vulnerabilities" | jq -r '.[] | "Package: \(.PkgName)\nVulnerabilities:\n\(.Vulnerabilities | map("\(.VulnerabilityID) - \(.Severity) - \(.Title)") | join("\n"))\n"' > result.txt
           fi
+          
+          # Check if result.txt exists before proceeding
+          if [ ! -f result.txt ]; then
+            echo "Error: result.txt not found. Skipping Slack notification."
+            exit 1
+          fi
 
-      # Step 8: Send detailed scan results to Slack
-      - name: Send detailed scan results to Slack
-        if: always()
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Send Trivy scan results to Slack
         run: |
+          # Send the formatted scan results to Slack
           scan_results=$(cat result.txt)
           curl -X POST -H 'Content-type: application/json' --data "{
             \"text\": \"Trivy Vulnerability Scan Report for Docker Image: imshashannk/python-argocd\n$scan_results\"
-          }" $SLACK_WEBHOOK_URL
+          }" ${{ secrets.SLACK_WEBHOOK_URL }}
+
