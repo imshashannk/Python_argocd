@@ -67,7 +67,7 @@ jobs:
         id: trivy-scan
         run: |
           trivy image imshashannk/hello-world:${{ env.NEW_TAG }} \
-            --severity CRITICAL,HIGH --format table || echo "Scan failed" > trivy-error.log
+            --severity CRITICAL,HIGH --format json -o trivy-output.json || echo "Scan failed" > trivy-error.log
         continue-on-error: true
 
       # Step 9: Check for Trivy Errors and Send Slack Alerts
@@ -80,7 +80,7 @@ jobs:
             curl -X POST -H 'Content-type: application/json' \
             --data "{\"text\":\"⚠️ Trivy scan failed for image: imshashannk/hello-world:${{ env.NEW_TAG }}. Please check the logs.\"}" \
             "$SLACK_WEBHOOK_URL"
-          elif [ $(cat trivy-output.log | grep -c 'CRITICAL\|HIGH') -gt 0 ]; then
+          elif jq '.[] | select(.Severity == "CRITICAL" or .Severity == "HIGH")' trivy-output.json | jq length > 0; then
             curl -X POST -H 'Content-type: application/json' \
             --data "{\"text\":\"⚠️ Vulnerabilities detected in image: imshashannk/hello-world:${{ env.NEW_TAG }}. Please review the results.\"}" \
             "$SLACK_WEBHOOK_URL"
