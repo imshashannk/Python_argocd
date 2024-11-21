@@ -8,7 +8,7 @@ def hello_world():
 
 @app.route("/ingress")  # Add a new route to call ingress function
 def ingress():
-    return "ingress is working!"
+    return "ingress is working!  yup"
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80)
