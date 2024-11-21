@@ -1,88 +1,70 @@
-name: Docker Image Vulnerability Alerts
+name: Trivy Vulnerability Scan
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  trivy-scan-and-alert:
+  trivy_scan:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout Repository
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-      # Step 2: Set up Docker Buildx
+      # Step 2: Set up Docker Buildx (Optional, if using multi-platform builds)
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v2
 
-      # Step 3: Log in to Docker Hub
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+      # Step 3: Cache Trivy for faster subsequent runs
+      - name: Cache Trivy
+        uses: actions/cache@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          path: /tmp/.cache/trivy
+          key: ${{ runner.os }}-trivy-${{ github.sha }}
 
-      # Step 4: Get Latest Version Tag and Increment
-      - name: Get Latest Version Tag and Increment
-        id: version
+      # Step 4: Install Trivy
+      - name: Install Trivy
         run: |
-          IMAGE_NAME="imshashannk/hello-world"
-          TAGS=$(curl -s "https://hub.docker.com/v2/repositories/$IMAGE_NAME/tags/" | jq -r '.results[].name')
-          LATEST_TAG=$(echo "$TAGS" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
-          if [ -z "$LATEST_TAG" ]; then
-            NEW_TAG="1.0.0"
+          curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.36.0/trivy_0.36.0_Linux-64bit.deb -o trivy.deb
+          sudo dpkg -i trivy.deb
+
+      # Step 5: Run Trivy vulnerability scan on Docker image and generate JSON output
+      - name: Run Trivy vulnerability scan on Docker image
+        run: |
+          docker build -t imshashannk/python-argocd:${{ github.sha }} .
+          trivy image --format json --output trivy-report.json imshashannk/python-argocd:${{ github.sha }}
+
+      # Step 6: Upload Trivy scan results as artifact
+      - name: Upload Trivy scan results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: trivy-scan-results
+          path: trivy-report.json
+
+      # Step 7: Parse Trivy report and format the output for Slack
+      - name: Parse Trivy scan results and prepare Slack message
+        id: parse_trivy_report
+        run: |
+          vulnerabilities=$(jq '[.[] | select(.Vulnerabilities != null) | {PkgName: .Target, Vulnerabilities: .Vulnerabilities[]}]' trivy-report.json)
+          if [[ -z "$vulnerabilities" ]]; then
+            echo "No vulnerabilities found." > result.txt
           else
-            IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_TAG"
-            PATCH=$((PATCH + 1))
-            NEW_TAG="$MAJOR.$MINOR.$PATCH"
+            echo "$vulnerabilities" | jq -r '.[] | "Package: \(.PkgName)\nVulnerabilities:\n\(.Vulnerabilities | map("\(.VulnerabilityID) - \(.Severity) - \(.Title)") | join("\n"))\n"' > result.txt
           fi
-          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
-      # Step 5: Build Docker Image
-      - name: Build Docker Image
-        run: |
-          docker build -t imshashannk/hello-world:${{ env.NEW_TAG }} .
-          docker push imshashannk/hello-world:${{ env.NEW_TAG }}
-      # Step 6: Cache Trivy DB
-      - name: Cache Trivy DB
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/trivy
-          key: trivy-db-${{ runner.os }}-${{ hashFiles('**/Dockerfile') }}
-          restore-keys: |
-            trivy-db-${{ runner.os }}-
-      # Step 7: Set up Trivy
-      - name: Set up Trivy
-        uses: aquasecurity/setup-trivy@v0.2.2
-        with:
-          version: 'latest'
 
-      # Step 8: Scan Docker Image with Trivy
-      - name: Trivy Vulnerability Scan
-        id: trivy-scan
-        run: |
-          trivy image imshashannk/hello-world:${{ env.NEW_TAG }} \
-            --severity CRITICAL,HIGH --format json -o trivy-output.json || echo "Scan failed" > trivy-error.log
-        continue-on-error: true
-
-      # Step 9: Check for Trivy Errors and Send Slack Alerts
-      - name: Send Slack Notification for Vulnerabilities
-        if: always()  # Ensure this step runs even if the previous step fails
+      # Step 8: Send detailed scan results to Slack
+      - name: Send detailed scan results to Slack
+        if: always()
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          if grep -q "Scan failed" trivy-error.log; then
-            curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"⚠️ Trivy scan failed for image: imshashannk/hello-world:${{ env.NEW_TAG }}. Please check the logs.\"}" \
-            "$SLACK_WEBHOOK_URL"
-          elif jq '.[] | select(.Severity == "CRITICAL" or .Severity == "HIGH")' trivy-output.json | jq length > 0; then
-            curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"⚠️ Vulnerabilities detected in image: imshashannk/hello-world:${{ env.NEW_TAG }}. Please review the results.\"}" \
-            "$SLACK_WEBHOOK_URL"
-          else
-            curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"✅ No critical or high vulnerabilities detected in image: imshashannk/hello-world:${{ env.NEW_TAG }}.\"}" \
-            "$SLACK_WEBHOOK_URL"
-          fi
+          scan_results=$(cat result.txt)
+          curl -X POST -H 'Content-type: application/json' --data "{
+            \"text\": \"Trivy Vulnerability Scan Report for Docker Image: imshashannk/python-argocd\n$scan_results\"
+          }" $SLACK_WEBHOOK_URL
