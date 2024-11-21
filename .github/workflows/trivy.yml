@@ -22,7 +22,7 @@ jobs:
         id: trivy_scan
         run: |
           # Run Trivy to scan the Docker image
-          docker run --rm -v $(pwd):/root/.cache/ -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.29.1 --format json --output trivy-report.json imshashannk/python-argocd:latest
+          docker run --rm -v $(pwd):/root/.cache/ -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.29.1 image --format json --output trivy-report.json imshashannk/python-argocd:latest
 
       - name: Process Trivy report and prepare Slack message
         id: process_report
@@ -51,4 +51,3 @@ jobs:
           curl -X POST -H 'Content-type: application/json' --data "{
             \"text\": \"Trivy Vulnerability Scan Report for Docker Image: imshashannk/python-argocd\n$scan_results\"
           }" ${{ secrets.SLACK_WEBHOOK_URL }}
-
