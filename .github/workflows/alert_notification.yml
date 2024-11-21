@@ -60,7 +60,7 @@ jobs:
         run: |
           sonar-scanner \
             -Dsonar.projectKey=imshashannk_Python_argocd \
-            -Dsonar.host.url=https://sonar.example.com \
+            -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=$SONAR_TOKEN
 
       # Step 7: Fetch SonarQube Issues (Vulnerabilities)
