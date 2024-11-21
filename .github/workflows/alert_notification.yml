@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  trivy-sonarqube-scan-and-alert:
+  trivy-scan-and-alert:
     runs-on: ubuntu-latest
 
     steps:
@@ -40,59 +40,12 @@ jobs:
             NEW_TAG="$MAJOR.$MINOR.$PATCH"
           fi
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
-
       # Step 5: Build Docker Image
       - name: Build Docker Image
         run: |
           docker build -t imshashannk/hello-world:${{ env.NEW_TAG }} .
           docker push imshashannk/hello-world:${{ env.NEW_TAG }}
-
-      # Step 6: Run SonarQube Analysis
-      - name: Install SonarQube Scanner
-        run: |
-          curl -sSLo sonar-scanner-cli.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
-          unzip sonar-scanner-cli.zip -d /opt
-          echo "/opt/sonar-scanner-4.8.0.2856-linux/bin" >> $GITHUB_PATH
-
-      - name: Run SonarQube Analysis
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          sonar-scanner \
-            -Dsonar.projectKey=imshashannk_Python_argocd \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=$SONAR_TOKEN
-
-      # Step 7: Fetch SonarQube Issues (Vulnerabilities)
-      - name: Fetch SonarQube Issues
-        id: fetch-sonar-issues
-        run: |
-          curl -u ${{ secrets.SONAR_TOKEN }}: \
-            "https://sonar.example.com/api/issues/search?componentKeys=your_project_key&resolved=false&ps=100" \
-            -o sonar-issues.json
-
-      # Step 8: Send Slack Notification for SonarQube Issues
-      - name: Send Slack Notification for SonarQube Issues
-        if: always()
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          issues=$(jq '.issues' sonar-issues.json)
-          critical_high=$(echo $issues | jq '[.[] | select(.severity == "CRITICAL" or .severity == "HIGH")]')
-
-          if [ "$(echo $critical_high | jq length)" -gt 0 ]; then
-            message="⚠️ Critical and High vulnerabilities detected in SonarQube analysis. Please review the issues."
-            curl -X POST -H 'Content-type: application/json' \
-              --data "{\"text\":\"$message\"}" \
-              "$SLACK_WEBHOOK_URL"
-          else
-            message="✅ No critical or high vulnerabilities detected in SonarQube analysis."
-            curl -X POST -H 'Content-type: application/json' \
-              --data "{\"text\":\"$message\"}" \
-              "$SLACK_WEBHOOK_URL"
-          fi
-
-      # Step 9: Cache Trivy DB
+      # Step 6: Cache Trivy DB
       - name: Cache Trivy DB
         uses: actions/cache@v4
         with:
@@ -100,14 +53,13 @@ jobs:
           key: trivy-db-${{ runner.os }}-${{ hashFiles('**/Dockerfile') }}
           restore-keys: |
             trivy-db-${{ runner.os }}-
-
-      # Step 10: Set up Trivy
+      # Step 7: Set up Trivy
       - name: Set up Trivy
         uses: aquasecurity/setup-trivy@v0.2.2
         with:
           version: 'latest'
 
-      # Step 11: Scan Docker Image with Trivy
+      # Step 8: Scan Docker Image with Trivy
       - name: Trivy Vulnerability Scan
         id: trivy-scan
         run: |
@@ -115,9 +67,9 @@ jobs:
             --severity CRITICAL,HIGH --format json -o trivy-output.json || echo "Scan failed" > trivy-error.log
         continue-on-error: true
 
-      # Step 12: Send Slack Notification for Trivy Vulnerabilities
-      - name: Send Slack Notification for Trivy Vulnerabilities
-        if: always()
+      # Step 9: Check for Trivy Errors and Send Slack Alerts
+      - name: Send Slack Notification for Vulnerabilities
+        if: always()  # Ensure this step runs even if the previous step fails
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
