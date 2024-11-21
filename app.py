@@ -4,7 +4,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def hello_world():
-    return "Home path"
+    return "Home path, next commit"
 
 @app.route("/ingress")  # Add a new route to call ingress function
 def ingress():
