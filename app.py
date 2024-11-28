@@ -8,7 +8,7 @@ SECRET_KEY = "hardcoded_secret_key_123"
 @app.route("/")
 def hello_world():
     # Reflect user input directly in the response (vulnerability: Cross-Site Scripting - XSS)
-    name = request.args.get("name", "World")
+    name = request.args.get("name", "Worldslkfjwashfliuszohawbhfoidslkvbgfwhakvlnjks")
     return f"Hello, {name}! Welcome to the home path."
 
 @app.route("/login", methods=["POST"])
